@@ -1,6 +1,6 @@
 #### Mame: Global Leaderboard patch
 
-A patch for mame to transmit highscores to a global leaderboard.
+This is a patch for mame to transmit hiscores to a global leaderboard. The hiscores will be transmitted as soon as you leave mame or switch between games. This basically happens directly after the hi file for the game has been written.
 
 ##### Installation
 1. Obtain the main sources from the [mamedev website](http://www.mamedev.org/release.html) use the most current version. I started this patch with mame version 0151. I am planning on updating this patch as soon as a new version of mame (and hiscore patch) is available. However, I have no intend to backport this patch to previous versions. If you need it for a previous version, feel free to request it with a good reason why you need that version.
