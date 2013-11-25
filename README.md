@@ -7,7 +7,7 @@ This is a patch for mame to transmit hiscores to a global leaderboard. The hisco
 2. Obtain and apply the [hiscore patch](http://forum.arcadecontrols.com/index.php?topic=64298.0). Download the apropriate patch for your mame version.
 3. Apply Global Leaderboard patch from this repository. Make sure you choose the appropriate patch for your mame version. Copy the patch to your mame directory and apply the patch.
 
-   ```patch -p1 -E --binary < leaderboard.diff```
+   ```patch -p1 -E --binary < global_leaderboard.diff```
 
 4. Compile mame as you normaly would.
 
