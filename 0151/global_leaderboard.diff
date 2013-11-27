@@ -14,7 +14,7 @@ diff -Nru old/makefile new/makefile
  INCPATH += -I$(SRC)/lib/expat
 diff -Nru old/src/emu/emuopts.c new/src/emu/emuopts.c
 --- old/src/emu/emuopts.c	2013-11-24 23:25:42.000000000 +0100
-+++ new/src/emu/emuopts.c	2013-11-26 21:52:43.782352264 +0100
++++ new/src/emu/emuopts.c	2013-11-27 01:37:38.573619896 +0100
 @@ -184,6 +184,13 @@
    { OPTION_DISABLE_HISCORE_PATCH, 										 "0",         OPTION_BOOLEAN,    "disable hiscore saving" },
    { OPTION_DISABLE_NAGSCREEN_PATCH,  									 "0",         OPTION_BOOLEAN,    "disable suppression of nagscreens" },
@@ -24,7 +24,7 @@ diff -Nru old/src/emu/emuopts.c new/src/emu/emuopts.c
 +	{ NULL,                                              NULL,        OPTION_HEADER,     "GLOBAL LEADERBOARD OPTIONS" },
 +	{ OPTION_DISABLE_GLOBAL_LEADERBOARD_PATCH,           "0",         OPTION_BOOLEAN,    "disable global leaderbard" },
 +	{ OPTION_GLOBAL_LEADERBOARD_API_KEY,                 "default",   OPTION_STRING,     "the global leaderboard API key" },
-+	{ OPTION_GLOBAL_LEADERBOARD_URL,                     "http://leaderbard.1337.af/api", OPTION_STRING,     "the global leaderboard URL" },
++	{ OPTION_GLOBAL_LEADERBOARD_URL,                     "http://leaderboard.1337.af/api", OPTION_STRING,     "the global leaderboard URL" },
 +  
  	{ NULL }
  };
