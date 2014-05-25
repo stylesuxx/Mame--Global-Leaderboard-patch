@@ -1,0 +1,194 @@
+diff -Nru old/makefile new/makefile
+--- old/makefile	2014-05-25 20:27:11.622939146 +0200
++++ new/makefile	2014-05-25 20:27:38.125692933 +0200
+@@ -699,6 +699,10 @@
+ # start with an empty set of libs
+ LIBS = 
+ 
++# Global Leaderboard Diff
++# add curl
++LIBS += -lcurl
++
+ # add expat XML library
+ ifeq ($(BUILD_EXPAT),1)
+ INCPATH += -I$(SRC)/lib/expat
+diff -Nru old/src/emu/emu.mak new/src/emu/emu.mak
+--- old/src/emu/emu.mak	2014-05-25 20:27:10.042953824 +0200
++++ new/src/emu/emu.mak	2014-05-25 20:27:35.400718249 +0200
+@@ -93,6 +93,7 @@
+ 	$(EMUOBJ)/info.o \
+ 	$(EMUOBJ)/input.o \
+ 	$(EMUOBJ)/ioport.o \
++	$(EMUOBJ)/leaderboard.o \
+ 	$(EMUOBJ)/luaengine.o \
+ 	$(EMUOBJ)/mame.o \
+ 	$(EMUOBJ)/machine.o \
+diff -Nru old/src/emu/emuopts.c new/src/emu/emuopts.c
+--- old/src/emu/emuopts.c	2014-05-25 20:27:11.263942481 +0200
++++ new/src/emu/emuopts.c	2014-05-25 20:27:36.925704081 +0200
+@@ -185,6 +185,13 @@
+ 	{ OPTION_DISABLE_HISCORE_PATCH,                      "0",         OPTION_BOOLEAN,    "disable hiscore saving" },
+ 	{ OPTION_DISABLE_NAGSCREEN_PATCH,                    "0",         OPTION_BOOLEAN,    "disable suppression of nagscreens" },
+ 	{ OPTION_DISABLE_LOADING_PATCH,                      "0",         OPTION_BOOLEAN,    "disable suppression of loading screens /white box" },
++
++	// Global Leaderbaord Diff options
++	{ NULL,                                              NULL,        OPTION_HEADER,     "GLOBAL LEADERBOARD OPTIONS" },
++	{ OPTION_DISABLE_GLOBAL_LEADERBOARD_PATCH,           "0",         OPTION_BOOLEAN,    "disable global leaderbard" },
++	{ OPTION_GLOBAL_LEADERBOARD_API_KEY,                 "default",   OPTION_STRING,     "the global leaderboard API key" },
++	{ OPTION_GLOBAL_LEADERBOARD_URL,                     "http://leaderboard.1337.af/api", OPTION_STRING,     "the global leaderboard URL" },
++ 
+ 	{ NULL }
+ };
+ 
+diff -Nru old/src/emu/emuopts.h new/src/emu/emuopts.h
+--- old/src/emu/emuopts.h	2014-05-25 20:27:10.042953824 +0200
++++ new/src/emu/emuopts.h	2014-05-25 20:27:35.400718249 +0200
+@@ -186,6 +186,11 @@
+ #define OPTION_DISABLE_NAGSCREEN_PATCH		"disable_nagscreen_patch"
+ #define OPTION_DISABLE_LOADING_PATCH		"disable_loading_patch"
+ 
++// Global Leaderboard Diff Options
++#define OPTION_DISABLE_GLOBAL_LEADERBOARD_PATCH       "disable_global_leaderboard_patch"
++#define OPTION_GLOBAL_LEADERBOARD_API_KEY             "global_leaderboard_api_key"
++#define OPTION_GLOBAL_LEADERBOARD_URL                 "global_leaderboard_url"
++
+ #define OPTION_HTTP                 "http"
+ #define OPTION_HTTP_PORT            "http_port"
+ #define OPTION_HTTP_PATH            "http_path"
+@@ -353,6 +358,11 @@
+ 	bool disable_nagscreen_patch() const { return bool_value(OPTION_DISABLE_NAGSCREEN_PATCH); }
+ 	bool disable_loading_patch() const { return bool_value(OPTION_DISABLE_LOADING_PATCH); }
+ 
++	// Global Leaderboard Diff Options
++	bool disable_global_leaderboard_patch() const { return bool_value(OPTION_DISABLE_GLOBAL_LEADERBOARD_PATCH); }
++	const char *global_leaderboard_api_key() const { return value(OPTION_GLOBAL_LEADERBOARD_API_KEY); }
++	const char *global_leaderboard_url() const { return value(OPTION_GLOBAL_LEADERBOARD_URL); }
++
+ 	bool confirm_quit() const { return bool_value(OPTION_CONFIRM_QUIT); }
+ 	bool ui_mouse() const { return bool_value(OPTION_UI_MOUSE); }
+ 
+diff -Nru old/src/emu/hiscore.c new/src/emu/hiscore.c
+--- old/src/emu/hiscore.c	2014-05-25 20:27:11.262942491 +0200
++++ new/src/emu/hiscore.c	2014-05-25 20:27:36.925704081 +0200
+@@ -12,7 +12,7 @@
+ #include "emu.h"
+ #include "emuopts.h"
+ #include "hiscore.h"
+-
++#include "leaderboard.h"
+ 
+ #define MAX_CONFIG_LINE_SIZE 48
+ 
+@@ -274,6 +274,11 @@
+ {
+ 	if (state.hiscores_have_been_loaded) 
+ 		hiscore_save(machine);
++
++	// Global Leaderbaord Diff options
++	if (! machine.options().disable_global_leaderboard_patch())
++		leaderboard_submit(machine);
++
+ 	hiscore_free();
+ }
+ 
+diff -Nru old/src/emu/leaderboard.c new/src/emu/leaderboard.c
+--- old/src/emu/leaderboard.c	1970-01-01 01:00:00.000000000 +0100
++++ new/src/emu/leaderboard.c	2014-05-25 20:27:35.400718249 +0200
+@@ -0,0 +1,86 @@
++#include "emu.h"
++#include "emuopts.h"
++#include "leaderboard.h"
++#include "curl/curl.h"
++
++void leaderboard_submit (running_machine &machine)
++{
++	CURL *curl;
++	CURLcode res;
++
++	char* tmp;
++	int length = 0;
++	const char* api = "key=";
++	const char* name = "&game=";
++	const char* score = "&data=";
++
++	char* params = global_alloc_array(char,
++		strlen(api) +
++		strlen(machine.options().global_leaderboard_api_key()) +
++		strlen(name) +
++		strlen(machine.basename()) +
++		strlen(score) +
++		1);
++
++	strcpy(params, api);
++	strcat(params, machine.options().global_leaderboard_api_key());
++	strcat(params, name);
++	strcat(params, machine.basename());
++	strcat(params, score);
++
++	file_error filerr;
++	emu_file f(machine.options().hiscore_directory(), OPEN_FLAG_READ);
++	filerr = f.open(machine.basename(), ".hi");
++	
++	if (filerr == FILERR_NONE)
++	{
++		length = f.size();
++		printf("File size: %d\n", length);
++
++		UINT8 *data = global_alloc_array(UINT8, length);
++		char *data_hex = global_alloc_array(char, length*2 + 1);
++		memset(data_hex, '\0', 1);
++
++		f.read(data, length);
++		int i;
++		for (i = 0; i < length; i++)
++		{
++			char* hex = global_alloc_array(char, 3);
++			sprintf(hex, "%02X", data[i]);
++			strcat(data_hex, hex);
++			global_free_array(hex);
++		}
++
++		global_free_array(data);
++
++		size_t len = strlen(params) + strlen(data_hex) + 1;
++		tmp = global_alloc_array(char, len);
++		strcpy(tmp, params);
++		strcat(tmp, data_hex);
++		global_free_array(params);
++		params = global_alloc_array(char, strlen(tmp) + 1);
++		strcpy(params, tmp);
++
++		global_free_array(tmp);
++		global_free_array(data_hex);
++
++		f.close();
++
++		curl_global_init(CURL_GLOBAL_ALL);
++		curl = curl_easy_init();
++		if (curl)
++		{
++			printf("Trying to transmit: %s\n", params);
++			curl_easy_setopt(curl, CURLOPT_URL, machine.options().global_leaderboard_url());
++			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, params);
++			curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 3000); 
++			res = curl_easy_perform(curl);
++			if (res != CURLE_OK)
++				fprintf(stderr, "Transmitting score to global leaderboard failed: %s\n", curl_easy_strerror(res));
++
++			curl_easy_cleanup(curl);
++		}
++		curl_global_cleanup();
++	}
++	global_free_array(params);
++}
+\ No newline at end of file
+diff -Nru old/src/emu/leaderboard.h new/src/emu/leaderboard.h
+--- old/src/emu/leaderboard.h	1970-01-01 01:00:00.000000000 +0100
++++ new/src/emu/leaderboard.h	2014-05-25 20:27:35.280719364 +0200
+@@ -0,0 +1,6 @@
++#ifndef __LEADERBOARD_H__
++#define __LEADERBOARD_H__
++
++void leaderboard_submit(running_machine &machine);
++
++#endif	/* __LEADERBOARD_H__ */
