@@ -16,4 +16,4 @@ The global Leaderboard patch comes with three settings. But the only one you **n
 
 * **global_leaderboard_api_key** This is your API Key for the global Leaderboard (default=default).
 * **global_leaderboard_url** This is the URL to the global Leaderboard. You most likely do not want to change this, except you want to run your own leaderboard (default=localhost).
-* **disable_global_leaderboard_patch** You can set this option to 1 if you want to stop transmitting your scores to the global leaderboard (default=1).
+* **disable_global_leaderboard_patch** You can set this option to 1 if you want to stop transmitting your scores to the global leaderboard (default=0).
